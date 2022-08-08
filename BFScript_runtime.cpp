@@ -26,9 +26,9 @@ string error_reason[12] =
 	"negative or zero memory memsize",
 	"invalid instruction",
 	"out of program left bound while jumping",
-	"out of program right bound while jumping",
+	"out of program right bound while jumping"
 };//error reason strings
-constexpr int basic_instr_count = 38, nested_instr_count = 6;
+constexpr int basic_instr_count = 39, nested_instr_count = 6;
 string basic_instructions[basic_instr_count] =
 {
 	"incr;","decr;","zero;",
@@ -40,7 +40,8 @@ string basic_instructions[basic_instr_count] =
 	"sleep;","time;","clock;",
 	"next;","prev;","memjump;",
 	"jump;",
-	"not;","and;","or;","xor;","nand;","nor;","xnor;"
+	"not;","and;","or;","xor;","nand;","nor;","xnor;",
+	"set"
 };//basic instructions:sequencial execution
 string nested_instructions[nested_instr_count] =
 {
@@ -50,8 +51,6 @@ string nested_instructions[nested_instr_count] =
 //match substring
 bool match(string s, string subs, unsigned long long start)
 {
-	if (start < 0)
-		throw "WTF!Why is ptr minus?!";
 	unsigned long long len = subs.length();
 	if (len > (s.length() - start))
 		return false;
@@ -169,6 +168,7 @@ void execute_basic_instruction(int id, string c)
 	//	"jump;",
 	//	"not;","and;","or;","xor;","nand;","nor;","xnor;"
 	int* mptr;
+	string s;
 	if (id >= 4 && id <= 9)
 	{
 		fflush(stdin);
@@ -428,10 +428,28 @@ void execute_basic_instruction(int id, string c)
 			if (ptr > memsize - 3)
 				end(2, c, true);
 			mem[addr + 2] = ~(mem[addr] | mem[addr + 1]);
+			break;
 		case 38://xnor
 			if (ptr > memsize - 3)
 				end(2, c, true);
 			mem[addr + 2] = ~(mem[addr] ^ mem[addr + 1]);
+			break;
+
+		case 39://set
+			ptr += 3;
+			if (c[ptr] != ' ')
+				end(9, c, true);//error 9:invalid instruction
+			ptr++;
+			while (c[ptr] >= '0' && c[ptr] <= '9')
+			{
+				s += c[ptr];
+				ptr++;
+			}
+			if (c[ptr] != ';')
+				end(9, c, true);//invalid instruction
+			ptr++;
+			mem[addr] = atoi(s.c_str());
+			break;
 	}
 }
 //execute nested instruction:loop,conditional,closing "}"
@@ -490,7 +508,8 @@ void exec(string code)
 			{
 				matched = true;
 				execute_basic_instruction(i + 1, code);
-				ptr += basic_instructions[i].length();
+				if (i != 38)
+					ptr += basic_instructions[i].length();
 				next_token(code);
 				break;
 			}
@@ -516,7 +535,7 @@ int main()
 	string c = "";
 	color(df_color);
 	cout << "BFScript interactive shell\nBFScript code:";
-	cin >> c;
+	getline(cin, c);
 	init_mem();
 	exec(c);
 	color(nm_color);
