@@ -28,11 +28,11 @@ string error_reason[12] =
 	"out of program left bound while jumping",
 	"out of program right bound while jumping"
 };//error reason strings
-constexpr int basic_instr_count = 39, nested_instr_count = 6;
+constexpr int basic_instr_count = 40, nested_instr_count = 6;
 string basic_instructions[basic_instr_count] =
 {
 	"incr;","decr;","zero;",
-	"getchar;","putchar;","getint;","putint;","newline;","bell;",
+	"getchar;","putchar;","getint;","putint;","newline;","bell;","clearscreen",
 	"copy;","move;","swap;","alloc;","free;","clear;","resize;","fill;",
 	"exit;","crash;",
 	"div;","mod;","add;","sub;",
@@ -60,6 +60,19 @@ bool match(string s, string subs, unsigned long long start)
 void color(int c)
 {
 	SetConsoleTextAttribute(handle, c);
+}
+//clear screen
+void clrscr()
+{
+	HANDLE hConsole;
+	COORD coordScreen = { 0, 0 };
+	DWORD cCharsWritten;
+	DWORD dwConSize;
+	hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	GetConsoleScreenBufferInfo(hConsole, &csbi);
+	dwConSize = csbi.dwSize.X * csbi.dwSize.Y;
+	FillConsoleOutputCharacter(hConsole, (TCHAR)' ', dwConSize, coordScreen, &cCharsWritten);
 }
 //error report function
 void error_at(string s)
@@ -102,10 +115,6 @@ void end(int val, string code = "", bool iserror = false)
 		color(nm_color);
 		exit(val);
 	}
-}
-void clrscr()
-{
-	SetConsoleCursorPosition(handle, { 0,0 });
 }
 void next_token(string code, bool allow_semicolon = true)
 {
@@ -204,8 +213,11 @@ void execute_basic_instruction(int id, string c)
 		case 9://bell
 			putchar(7);
 			break;
+		case 10://clearscreen
+			clrscr();
+			break;
 
-		case 10://copy
+		case 11://copy
 			if (addr == memsize - 1)
 				end(2, c, true);//out of right bound
 			if (addr + mem[addr + 1] < memsize)
@@ -218,7 +230,7 @@ void execute_basic_instruction(int id, string c)
 			else
 				end(2, c, true);//out of right bound
 			break;
-		case 11://move
+		case 12://move
 			if (addr == memsize - 1)
 				end(2, c, true);//out of right bound
 			if (addr + mem[addr + 1] < memsize)
@@ -234,7 +246,7 @@ void execute_basic_instruction(int id, string c)
 			else
 				end(2, c, true);//out of right bound
 			break;
-		case 12://swap
+		case 13://swap
 			if (addr == memsize - 1)
 				end(2, c, true);//out of right bound
 			if (addr + mem[addr + 1] < memsize)
@@ -247,7 +259,7 @@ void execute_basic_instruction(int id, string c)
 			else
 				end(2, c, true);//out of right bound
 			break;
-		case 13://alloc
+		case 14://alloc
 			memsize += mem[addr];
 			mptr = (int*)malloc(memsize);
 			if (mptr == nullptr)//allocation failure
@@ -263,7 +275,7 @@ void execute_basic_instruction(int id, string c)
 				mem = mptr;
 			}
 			break;
-		case 14://free
+		case 15://free
 			if (memsize <= mem[addr])
 				end(8, c, true);
 			memsize += mem[addr];
@@ -284,10 +296,10 @@ void execute_basic_instruction(int id, string c)
 				mem = mptr;
 				break;
 			}
-		case 15://clear
+		case 16://clear
 			memset(mem, 0, memsize * 4);
 			break;
-		case 16://resize
+		case 17://resize
 			memsize = mem[addr];
 			mptr = (int*)malloc(memsize);
 			if (mptr == nullptr)//allocation failure
@@ -303,18 +315,18 @@ void execute_basic_instruction(int id, string c)
 				mem = mptr;
 			}
 			break;
-		case 17://fill
+		case 18://fill
 			fill(mem, mem + memsize * 4, mem[addr]);
 			break;
 
-		case 18://exit
+		case 19://exit
 			end(mem[addr], c, false);
 			break;
-		case 19://crash
+		case 20://crash
 			end(7, c, true);
 			break;
 
-		case 20://div
+		case 21://div
 			if (addr > memsize - 3)
 				end(2, c, true);
 			if (mem[addr + 1] == 0)
@@ -322,7 +334,7 @@ void execute_basic_instruction(int id, string c)
 			else
 				mem[addr + 2] = mem[addr] / mem[addr + 1];
 			break;
-		case 21://mod
+		case 22://mod
 			if (addr > memsize - 3)
 				end(2, c, true);
 			if (mem[addr + 1] == 0)
@@ -330,20 +342,20 @@ void execute_basic_instruction(int id, string c)
 			else
 				mem[addr + 2] = mem[addr] % mem[addr + 1];
 			break;
-		case 22://add
+		case 23://add
 			if (addr > memsize - 3)
 				end(2, c, true);
 			else
 				mem[addr + 2] = mem[addr] + mem[addr + 1];
 			break;
-		case 23://sub
+		case 24://sub
 			if (addr > memsize - 3)
 				end(2, c, true);
 			else
 				mem[addr + 2] = mem[addr] - mem[addr + 1];
 			break;
 
-		case 24://compare
+		case 25://compare
 			if (addr > memsize - 3)
 				end(2, c, true);
 			else
@@ -360,30 +372,30 @@ void execute_basic_instruction(int id, string c)
 			}
 			break;
 
-		case 25://sleep
+		case 26://sleep
 			Sleep(mem[addr]);
 			break;
-		case 26://time
+		case 27://time
 			mem[addr] = time(0);
 			break;
-		case 27://clock
+		case 28://clock
 			//note:For Windows,CLOCKS_PER_SEC is usually 1000;For *NIX users,divide clock() by a number to adjust it.
 			mem[addr] = clock();
 			break;
 
-		case 28://next
+		case 29://next
 			if (addr != memsize - 1)
 				addr++;
 			else
 				end(2, c, true);
 			break;
-		case 29://prev
+		case 30://prev
 			if (addr != 0)
 				addr--;
 			else
 				end(1, c, true);
 			break;
-		case 30://memjump
+		case 31://memjump
 			if (addr + mem[addr + 1] < 0)
 				end(1, c, true);
 			if (addr + mem[addr + 1] >= memsize)
@@ -391,7 +403,7 @@ void execute_basic_instruction(int id, string c)
 			addr += mem[addr + 1];
 			break;
 
-		case 31://jump
+		case 32://jump
 			if (ptr + mem[addr] < 0)
 				end(10, c, true);
 			if (ptr + mem[addr] > codelen - 1)
@@ -399,43 +411,43 @@ void execute_basic_instruction(int id, string c)
 			ptr += mem[addr];
 			break;
 
-		case 32://not
+		case 33://not
 			if (ptr > memsize - 2)
 				end(2, c, true);
 			mem[addr + 1] = ~mem[addr];
 			break;
-		case 33://and
+		case 34://and
 			if (ptr > memsize - 3)
 				end(2, c, true);
 			mem[addr + 2] = mem[addr] & mem[addr + 1];
 			break;
-		case 34://or
+		case 35://or
 			if (ptr > memsize - 3)
 				end(2, c, true);
 			mem[addr + 2] = mem[addr] | mem[addr + 1];
 			break;
-		case 35://xor
+		case 36://xor
 			if (ptr > memsize - 3)
 				end(2, c, true);
 			mem[addr + 2] = mem[addr] ^ mem[addr + 1];
 			break;
-		case 36://nand
+		case 37://nand
 			if (ptr > memsize - 3)
 				end(2, c, true);
 			mem[addr + 2] = ~(mem[addr] & mem[addr + 1]);
 			break;
-		case 37://nor
+		case 38://nor
 			if (ptr > memsize - 3)
 				end(2, c, true);
 			mem[addr + 2] = ~(mem[addr] | mem[addr + 1]);
 			break;
-		case 38://xnor
+		case 39://xnor
 			if (ptr > memsize - 3)
 				end(2, c, true);
 			mem[addr + 2] = ~(mem[addr] ^ mem[addr + 1]);
 			break;
 
-		case 39://set
+		case 40://set
 			ptr += 3;
 			if (c[ptr] != ' ')
 				end(9, c, true);//error 9:invalid instruction
@@ -508,7 +520,7 @@ void exec(string code)
 			{
 				matched = true;
 				execute_basic_instruction(i + 1, code);
-				if (i != 38)
+				if (i != 39)
 					ptr += basic_instructions[i].length();
 				next_token(code);
 				break;
@@ -532,11 +544,12 @@ void init_mem()
 int main()
 {
 	system("title BFScript runtime");
-	string c = "";
+	string c = "", concat = "";
 	color(df_color);
 	cout << "BFScript interactive shell\nBFScript code:";
-	getline(cin, c);
+	while (getline(cin, c))
+		concat += (c + "\n");
 	init_mem();
-	exec(c);
+	exec(concat);
 	color(nm_color);
 }
