@@ -1,17 +1,17 @@
 #include<windows.h>
 #include<iostream>
 #include<fstream>
-#include<conio.h>
-#include<csignal>
+#include<map>
 #include<time.h>
 #define defaultsize 1024
 using namespace std;
-HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);//output handle
+HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
 unsigned long long codelen;
-unsigned long long ptr = 0;//code parsing pointer
-int memsize = defaultsize;//memsize indicator
-int* mem = (int*)malloc(memsize * 4 + 4);//default memory pointer
-int addr = 0;//address pointer
+unsigned long long ptr = 0;
+int memsize = defaultsize;
+int* mem = (int*)malloc(memsize * 4 + 4);
+int addr = 0;
+
 int fg_color = 0x4, df_color = 0x3, nm_color = 0xb, er_color = 0x40 | nm_color;
 typedef struct debug_info
 {
@@ -33,28 +33,140 @@ string error_reason[12] =
 	"invalid instruction",
 	"out of program left bound while jumping",
 	"out of program right bound while jumping"
-};//error reason strings
-constexpr int basic_instr_count = 41, nested_instr_count = 6;
+};
+constexpr int basic_instr_count = 42, nested_instr_count = 6;
 string basic_instructions[basic_instr_count] =
 {
-	"incr;","decr;","zero;",
+	"incr;","decr;","zero;","set",
 	"getchar;","putchar;","getint;","putint;","newline;","bell;","clearscreen",
 	"copy;","move;","swap;","alloc;","free;","clear;","resize;","fill;",
-	"exit;","crash;",
+	"exit;","crash;","break;",
 	"div;","mod;","add;","sub;","mul;",
 	"compare;",
 	"sleep;","time;","clock;",
 	"next;","prev;","memjump;",
 	"jump;",
-	"not;","and;","or;","xor;","nand;","nor;","xnor;",
-	"set"
-};//basic instructions:sequencial execution
+	"not;","and;","or;","xor;","nand;","nor;","xnor;"
+};
 string nested_instructions[nested_instr_count] =
 {
 	"while{","whilezero{","forever{","if{","ifzero{","}"
-};//nestable instructions:loop and conditional
-//colors:foreground-for stress,default-runtime color,normal-console color,error-when the code crashes,also used for debug
-//match substring
+};
+
+void help(string s, bool param = false)
+{
+	map<string, string> cell_operations;
+	cell_operations["incr"] = "increment current cell";
+	cell_operations["decr"] = "decrement current cell";
+	cell_operations["zero"] = "set current cell to zero";
+	cell_operations["set"] = "set current cell to the followed value";
+	map<string, string> input_and_output;
+	input_and_output["getchar"] = "ask the user to input a character and store its ASCII value in current cell";
+	input_and_output["putchar"] = "take the value of current cell as ASCII value and output the corresponding character";
+	input_and_output["getint"] = "ask the user to input a integer and store it in current cell";
+	input_and_output["putint"] = "output the value of current cell as an integer";
+	input_and_output["newline"] = "start a new line(by printing the newline character)";
+	input_and_output["bell"] = "output the BELL(ASCII 7) character, making an alert sound";
+	input_and_output["clearscreen"] = "clear all output";
+	map<string, string> memory_operations;
+	memory_operations["copy"] = "copy current cell, using next cell as offset";
+	memory_operations["move"] = "move current cell, using next cell as offset";
+	memory_operations["swap"] = "swap current cell, using next cell as offset";
+	memory_operations["alloc"] = "allocate memory, current cell as number of cells";
+	memory_operations["free"] = "deallocate memory, current cell as number of cells";
+	memory_operations["clear"] = "clear all memory(set them to 0)";
+	memory_operations["resize"] = "resize memory, current cell as number of cells";
+	memory_operations["fill"] = "fill memory with current cell";
+	map<string, string> end;
+	end["exit"] = "exit with current cell as return value";
+	end["crash"] = "call crash";
+	end["break"] = "end loop(while or whilezero)";
+	map<string, string> arithmetic;
+	arithmetic["div"] = "divide current cell by next cell and store the result in the cell after next cell";
+	arithmetic["mod"] = "mod current cell by next cell and store the result in the cell after next cell";
+	arithmetic["add"] = "add current cell to next cell and store the result in the cell after next cell";
+	arithmetic["sub"] = "subtract next cell from current cell and store the result in the cell after next cell";
+	arithmetic["mul"] = "multiply current cell by next cell and store the result in the cell after next cell";
+	map<string, string> compare;
+	compare["compare"] = "compares current cell to next cell, putting result in the cell after next cell(1:>,0:=,-1:<)";
+	map<string, string> timing;
+	timing["sleep"] = "pauses execution for (value of current cell) milliseconds";
+	timing["time"] = "get UNIX time and store it in current cell";
+	timing["clock"] = "get program clock (the unit is milliseconds) and store it in current cell";
+	map<string, string> pointer_moving;
+	pointer_moving["next"] = "move cell pointer to next cell";
+	pointer_moving["prev"] = "move cell pointer to previous cell";
+	pointer_moving["memjump"] = "move pointer with current cell as offset";
+	map<string, string> jump;
+	jump["jump"] = "jump program execution with current cell as offset";
+	map<string, string> logic;
+	logic["not"] = "flips every bit in current cell and stores it in next cell";
+	logic["and"] = "AND current cell and next cell, storing the result in the cell after next cell";
+	logic["or"] = "OR current cell and next cell, storing the result in the cell after next cell";
+	logic["xor"] = "XOR current cell and next cell, storing the result in the cell after next cell";
+	logic["nand"] = "NAND current cell and next cell, storing the result in the cell after next cell";
+	logic["nor"] = "NOR current cell and next cell, storing the result in the cell after next cell";
+	logic["xnor"] = "XNOR current cell and next cell, storing the result in the cell after next cell";
+	map<string, string> all;
+	all.insert(cell_operations.begin(), cell_operations.end());
+	all.insert(input_and_output.begin(), input_and_output.end());
+	all.insert(memory_operations.begin(), memory_operations.end());
+	all.insert(end.begin(), end.end());
+	all.insert(arithmetic.begin(), arithmetic.end());
+	all.insert(compare.begin(), compare.end());
+	all.insert(timing.begin(), timing.end());
+	all.insert(pointer_moving.begin(), pointer_moving.end());
+	all.insert(jump.begin(), jump.end());
+	all.insert(logic.begin(), logic.end());
+
+	map<string, map<string, string>> help;
+	help["cell"] = cell_operations;
+	help["io"] = input_and_output;
+	help["mem"] = memory_operations;
+	help["end"] = end;
+	help["arithmetic"] = arithmetic;
+	help["compare"] = compare;
+	help["timing"] = timing;
+	help["pointer"] = pointer_moving;
+	help["jump"] = jump;
+	help["logic"] = logic;
+	help["all"] = all;
+	if (param)
+	{
+		cout << "BFScript runtime.\n";
+		s = "all";
+	}
+
+	for (pair<string, map<string, string>> p : help)
+		if (p.first == s)
+		{
+			cout << "help on topic \"" << s << "\":\n";
+			for (pair<string, string> p2 : p.second)
+			{
+				if (p2.first == "clearscreen")
+				{
+					cout << "\t" << p2.first << "\t-" << p2.second << endl;
+					continue;
+				}
+				cout << "\t" << p2.first << "\t\t-" << p2.second << endl;
+			}
+			return;
+		}
+	for (pair<string, map<string, string>> p : help)
+		for (pair<string, string> p2 : p.second)
+			if (p2.first == s)
+			{
+				cout << "help on item \"" << s << "\":\n";
+				cout << "\t" << p2.first << "\t-" << p2.second << endl;
+				return;
+			}
+	cout << "no help found for \"" << s << "\". \n";
+	cout << "Try to use --help(-h) on one of the following topics:\n";
+	for (pair<string, map<string, string>> p : help)
+		cout << "\t" << p.first << endl;
+	return;
+}
+
 bool match(string s, string subs, unsigned long long start)
 {
 	unsigned long long len = subs.length();
@@ -62,12 +174,12 @@ bool match(string s, string subs, unsigned long long start)
 		return false;
 	return (subs.compare(s.substr(start, len)) == 0);
 }
-//set console color
+
 void color(int c)
 {
 	SetConsoleTextAttribute(handle, c);
 }
-//clear screen
+
 void clrscr()
 {
 	DWORD cCharsWritten;
@@ -78,7 +190,7 @@ void clrscr()
 	FillConsoleOutputCharacter(handle, (TCHAR)' ', dwConSize, { 0,0 }, &cCharsWritten);
 	SetConsoleCursorPosition(handle, { 0, 0 });
 }
-//error report function
+
 void error_at(string s)
 {
 	cout << "\nat:";
@@ -92,7 +204,7 @@ void error_at(string s)
 	}
 	color(nm_color);
 }
-//report execution position, nearly the same as error_at
+
 void report_position(string s)
 {
 	for (int n = 0; n<int(s.length()); n++)
@@ -105,7 +217,7 @@ void report_position(string s)
 	}
 	color(nm_color);
 }
-//exit function
+
 void end(int val, string code = "", bool iserror = false)
 {
 	if (val == 0)
@@ -142,7 +254,7 @@ void next_token(string code, bool allow_semicolon = true)
 		while ((code[ptr] == '\t' || code[ptr] == ' ' || code[ptr] == '\n') && ptr < codelen)
 			ptr++;
 }
-//as the function name
+
 unsigned long long next_token_of_matching_closing_bracket(unsigned long long pos, string code)
 {
 	unsigned long long temp_ptr = pos;
@@ -159,7 +271,7 @@ unsigned long long next_token_of_matching_closing_bracket(unsigned long long pos
 		temp_ptr++;
 	return temp_ptr;
 }
-//as the function name
+
 unsigned long long matching_opening_bracket(unsigned long long pos, string code)
 {
 	unsigned long long temp_ptr = pos;
@@ -181,16 +293,16 @@ unsigned long long matching_opening_bracket(unsigned long long pos, string code)
 }
 void execute_basic_instruction(int id, string c, string& out_string, bool output_string = false)
 {
-	//	"incr;","decr;","zero;",
-	//	"getchar;","putchar;","getint;","putint;","newline;","bell;",
-	//	"copy;","move;","swap;","alloc;","free;","clear;","resize;","fill;",
-	//	"exit;","crash;",
-	//	"div;","mod;","add;","sub;",
-	//	"compare;",
-	//	"sleep;","time;","clock;",
-	//	"next;","prev;","memjump",
-	//	"jump;",
-	//	"not;","and;","or;","xor;","nand;","nor;","xnor;"
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	int* mptr;
 	string s;
 	bool minus = false;
@@ -201,29 +313,52 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 	}
 	switch (id)
 	{
-	case 1://incr
+	case 1:
 		mem[addr]++;
 		break;
-	case 2://decr
+	case 2:
 		mem[addr]--;
 		break;
-	case 3://zero
+	case 3:
 		mem[addr] = 0;
 		break;
+	case 4:
+		ptr += 3;
+		if (c[ptr] != ' ')
+			end(9, c, true);
+		ptr++;
+		while (c[ptr] == '-')
+		{
+			minus = (!minus);
+			ptr++;
+		}
+		while (c[ptr] >= '0' && c[ptr] <= '9')
+		{
+			s += c[ptr];
+			ptr++;
+		}
+		if (c[ptr] != ';')
+			end(9, c, true);
+		ptr++;
+		if (minus)
+			mem[addr] = -atoi(s.c_str());
+		else
+			mem[addr] = atoi(s.c_str());
+		break;
 
-	case 4://getchar
+	case 5:
 		mem[addr] = int(getchar());
 		break;
-	case 5://putchar
+	case 6:
 		if (output_string)
 			out_string += char(mem[addr]);
 		else
 			putchar(mem[addr]);
 		break;
-	case 6://getint
+	case 7:
 		cin >> mem[addr];
 		break;
-	case 7://putint
+	case 8:
 		if (output_string)
 		{
 			char buf[64];
@@ -233,34 +368,34 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		else
 			cout << mem[addr];
 		break;
-	case 8://newline
+	case 9:
 		if (output_string)
 			out_string += "\n";
 		else
 			putchar('\n');
 		break;
-	case 9://bell
+	case 10:
 		putchar(7);
 		break;
-	case 10://clearscreen
+	case 11:
 		if (output_string)
 			out_string = "";
 		else
 			clrscr();
 		break;
 
-	case 11://copy
+	case 12:
 		if (addr + mem[addr + 1] < memsize)
 		{
 			if (addr + mem[addr + 1] >= 0)
 				mem[addr + mem[addr + 1]] = mem[addr];
 			else
-				end(1, c, true);//out of left bound
+				end(1, c, true);
 		}
 		else
-			end(2, c, true);//out of right bound
+			end(2, c, true);
 		break;
-	case 12://move
+	case 13:
 		if (addr + mem[addr + 1] < memsize)
 		{
 			if (addr + mem[addr + 1] >= 0)
@@ -269,28 +404,28 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 				mem[addr + mem[addr + 1]] = mem[addr];
 			}
 			else
-				end(1, c, true);//out of left bound
+				end(1, c, true);
 		}
 		else
-			end(2, c, true);//out of right bound
+			end(2, c, true);
 		break;
-	case 13://swap
+	case 14:
 		if (addr + mem[addr + 1] < memsize)
 		{
 			if (addr + mem[addr + 1] >= 0)
 				swap(mem[addr + mem[addr + 1]], mem[addr]);
 			else
-				end(1, c, true);//out of left bound
+				end(1, c, true);
 		}
 		else
-			end(2, c, true);//out of right bound
+			end(2, c, true);
 		break;
-	case 14://alloc
+	case 15:
 		memsize += mem[addr];
 		mptr = (int*)malloc(memsize);
-		if (mptr == nullptr)//allocation failure
+		if (mptr == nullptr)
 			mem[addr + 1] = 0;
-		else//success
+		else
 		{
 			memset(mptr, 0, memsize * 4);
 			if (addr >= memsize)
@@ -301,17 +436,17 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 			mem = mptr;
 		}
 		break;
-	case 15://free
+	case 16:
 		if (memsize <= mem[addr])
 			end(8, c, true);
 		memsize += mem[addr];
 		mptr = (int*)malloc(memsize);
-		if (mptr == nullptr)//allocation failure
+		if (mptr == nullptr)
 		{
 			mem[addr + 1] = 0;
 			break;
 		}
-		else//success
+		else
 		{
 			memset(mptr, 0, memsize * 4);
 			if (addr >= memsize)
@@ -322,15 +457,15 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 			mem = mptr;
 			break;
 		}
-	case 16://clear
+	case 17:
 		memset(mem, 0, memsize * 4);
 		break;
-	case 17://resize
+	case 18:
 		memsize = mem[addr];
 		mptr = (int*)malloc(memsize);
-		if (mptr == nullptr)//allocation failure
+		if (mptr == nullptr)
 			mem[addr + 1] = 0;
-		else//success
+		else
 		{
 			memset(mptr, 0, memsize * 4);
 			if (addr >= memsize)
@@ -341,18 +476,21 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 			mem = mptr;
 		}
 		break;
-	case 18://fill
+	case 19:
 		fill(mem, mem + memsize * 4, mem[addr]);
 		break;
 
-	case 19://exit
+	case 20:
 		end(mem[addr], c, false);
 		break;
-	case 20://crash
+	case 21:
 		end(7, c, true);
 		break;
-
-	case 21://div
+	case 22:
+		while (c[ptr] != '}')
+			ptr++;
+		break;
+	case 23:
 		if (addr > memsize - 3)
 			end(2, c, true);
 		if (mem[addr + 1] == 0)
@@ -360,7 +498,7 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		else
 			mem[addr + 2] = mem[addr] / mem[addr + 1];
 		break;
-	case 22://mod
+	case 24:
 		if (addr > memsize - 3)
 			end(2, c, true);
 		if (mem[addr + 1] == 0)
@@ -368,25 +506,25 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		else
 			mem[addr + 2] = mem[addr] % mem[addr + 1];
 		break;
-	case 23://add
+	case 25:
 		if (addr > memsize - 3)
 			end(2, c, true);
 		else
 			mem[addr + 2] = mem[addr] + mem[addr + 1];
 		break;
-	case 24://sub
+	case 26:
 		if (addr > memsize - 3)
 			end(2, c, true);
 		else
 			mem[addr + 2] = mem[addr] - mem[addr + 1];
 		break;
-	case 25://mul
+	case 27:
 		if (addr > memsize - 3)
 			end(2, c, true);
 		else
 			mem[addr + 2] = mem[addr] * mem[addr + 1];
 		break;
-	case 26://compare
+	case 28:
 		if (addr > memsize - 3)
 			end(2, c, true);
 		else
@@ -403,30 +541,30 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		}
 		break;
 
-	case 27://sleep
+	case 29:
 		Sleep(mem[addr]);
 		break;
-	case 28://time
+	case 30:
 		mem[addr] = time(0);
 		break;
-	case 29://clock
-		//note:For Windows,CLOCKS_PER_SEC is usually 1000;For *NIX users,divide clock() by a number to adjust it.
+	case 31:
+		
 		mem[addr] = clock();
 		break;
 
-	case 30://next
+	case 32:
 		if (addr != memsize - 1)
 			addr++;
 		else
 			end(2, c, true);
 		break;
-	case 31://prev
+	case 33:
 		if (addr != 0)
 			addr--;
 		else
 			end(1, c, true);
 		break;
-	case 32://memjump
+	case 34:
 		if (addr + mem[addr + 1] < 0)
 			end(1, c, true);
 		if (addr + mem[addr + 1] >= memsize)
@@ -434,7 +572,7 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		addr += mem[addr + 1];
 		break;
 
-	case 33://jump
+	case 35:
 		if (ptr + mem[addr] < 0)
 			end(10, c, true);
 		if (ptr + mem[addr] > codelen - 1)
@@ -442,75 +580,51 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		ptr += mem[addr];
 		break;
 
-	case 34://not
+	case 36:
 		if (ptr > memsize - 2)
 			end(2, c, true);
 		mem[addr + 1] = ~mem[addr];
 		break;
-	case 35://and
+	case 37:
 		if (ptr > memsize - 3)
 			end(2, c, true);
 		mem[addr + 2] = mem[addr] & mem[addr + 1];
 		break;
-	case 36://or
+	case 38:
 		if (ptr > memsize - 3)
 			end(2, c, true);
 		mem[addr + 2] = mem[addr] | mem[addr + 1];
 		break;
-	case 37://xor
+	case 39:
 		if (ptr > memsize - 3)
 			end(2, c, true);
 		mem[addr + 2] = mem[addr] ^ mem[addr + 1];
 		break;
-	case 38://nand
+	case 40:
 		if (ptr > memsize - 3)
 			end(2, c, true);
 		mem[addr + 2] = ~(mem[addr] & mem[addr + 1]);
 		break;
-	case 39://nor
+	case 41:
 		if (ptr > memsize - 3)
 			end(2, c, true);
 		mem[addr + 2] = ~(mem[addr] | mem[addr + 1]);
 		break;
-	case 40://xnor
+	case 42:
 		if (ptr > memsize - 3)
 			end(2, c, true);
 		mem[addr + 2] = ~(mem[addr] ^ mem[addr + 1]);
 		break;
-
-	case 41://set
-		ptr += 3;
-		if (c[ptr] != ' ')
-			end(9, c, true);//error 9:invalid instruction
-		ptr++;
-		while (c[ptr] == '-')
-		{
-			minus = (!minus);
-			ptr++;
-		}
-		while (c[ptr] >= '0' && c[ptr] <= '9')
-		{
-			s += c[ptr];
-			ptr++;
-		}
-		if (c[ptr] != ';')
-			end(9, c, true);//invalid instruction
-		ptr++;
-		if (minus)
-			mem[addr] = -atoi(s.c_str());
-		else
-			mem[addr] = atoi(s.c_str());
-		break;
 	}
 }
-//execute nested instruction:loop,conditional,closing "}"
+
 void execute_nested_instruction(int id, string c)
 {
 	static bool skip_mark;
-	unsigned long long temp_ptr, temp_ptr_2;//temp_ptr for temporarily saving match position, temp_ptr_2 for end of code detection
+	unsigned long long temp_ptr, temp_ptr_2;
 	switch (id)
 	{
-	case 1://while
+	case 1:
 		if (mem[addr] == 0)
 		{
 			skip_mark = true;
@@ -519,7 +633,7 @@ void execute_nested_instruction(int id, string c)
 		else
 			ptr += nested_instructions[0].length();
 		break;
-	case 2://whilezero
+	case 2:
 		if (mem[addr] != 0)
 		{
 			skip_mark = true;
@@ -528,27 +642,27 @@ void execute_nested_instruction(int id, string c)
 		else
 			ptr += nested_instructions[1].length();
 		break;
-	case 3://forever
+	case 3:
 		ptr += nested_instructions[2].length();
 		break;
 
-	case 4://if
+	case 4:
 		if (mem[addr] == 0)
 			ptr = next_token_of_matching_closing_bracket(ptr, c);
 		else
 			ptr += nested_instructions[3].length();
 		break;
-	case 5://ifzero
+	case 5:
 		if (mem[addr] != 0)
 			ptr = next_token_of_matching_closing_bracket(ptr, c);
 		else
 			ptr += nested_instructions[4].length();
 		break;
 
-	case 6://closing bracket
+	case 6:
 		temp_ptr = matching_opening_bracket(ptr, c);
-		//marked when loop should stop
-		//since the mark don't have a way to be true when it is not a loop, no conditional here
+		
+		
 		if (skip_mark)
 		{
 			skip_mark = false;
@@ -566,7 +680,7 @@ void execute_nested_instruction(int id, string c)
 		break;
 	}
 }
-//debug output function
+
 void debug(string code, string out_str)
 {
 	clrscr();
@@ -584,7 +698,7 @@ void debug(string code, string out_str)
 	cout << endl;
 	cout << out_str;
 }
-//execute code
+
 void exec(string code, debug_info debug_info = { false,false })
 {
 	static string out_str = "";
@@ -634,7 +748,7 @@ void exec(string code, debug_info debug_info = { false,false })
 			end(9, code, true);
 	}
 }
-void init_mem()
+inline void init_mem()
 {
 	memset(mem, 0, memsize * 4);
 }
@@ -646,9 +760,10 @@ int main(int argc, char** argv)
 	color(df_color);
 	if (argc == 1)
 	{
-		cout << "BFScript interactive shell\nBFScript code:";
-		while (getline(cin, c))
-			concat += (c + "\n");
+		cout << "usage:" << argv[0] << " [parameters]\n";
+		cout << "to get help, use \"" << argv[0] << " -h\" or \"" << argv[0] << " --help\"";
+		color(nm_color);
+		return 0;
 	}
 	if (argc == 3 && (strcmp(argv[1], "-f") == 0 || strcmp(argv[1], "--file") == 0))
 	{
@@ -671,11 +786,23 @@ int main(int argc, char** argv)
 		di.debug = true;
 		di.step = true;
 	}
+	if (argc == 3 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0))
+	{
+		help(argv[2]);
+		color(nm_color);
+		return 0;
+	}
 	if (argc == 2 && (strcmp(argv[1], "-i") == 0 || strcmp(argv[1], "--interactive") == 0))
 	{
 		cout << "BFScript interactive shell\nBFScript code:";
 		while (getline(cin, c))
 			concat += (c + "\n");
+	}
+	if (argc == 2 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0))
+	{
+		help("", true);
+		color(nm_color);
+		return 0;
 	}
 	init_mem();
 	exec(concat, di);
