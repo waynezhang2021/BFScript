@@ -98,9 +98,9 @@ void help(string s, bool param = false)
 	map<string, string> pointer_moving;
 	pointer_moving["next"] = "move cell pointer to next cell";
 	pointer_moving["prev"] = "move cell pointer to previous cell";
-	pointer_moving["memjump"] = "move pointer with current cell as offset";
+	pointer_moving["memjump"] = "move pointer, using current cell as offset";
 	map<string, string> jump;
-	jump["jump"] = "jump program execution with current cell as offset";
+	jump["jump"] = "jump program execution pointer, using current cell as offset";
 	map<string, string> logic;
 	logic["not"] = "flips every bit in current cell and stores it in next cell";
 	logic["and"] = "AND current cell and next cell, storing the result in the cell after next cell";
@@ -437,7 +437,7 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		}
 		else
 		{
-			memset(mptr, 0, memsize * 4);
+			memset(mptr, 0, static_cast<size_t>(memsize) * 4);
 			if (addr >= memsize)
 				end(2, c, true);
 			mem[addr + 1] = 1;
