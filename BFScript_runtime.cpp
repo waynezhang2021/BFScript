@@ -8,9 +8,9 @@ using namespace std;
 HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);//output handle
 unsigned long long codelen;
 unsigned long long ptr = 0;//code parsing pointer
-int memsize = defaultsize;//memsize indicator
+unsigned int memsize = defaultsize;//memsize indicator
 int* mem = (int*)malloc(memsize * 4 + 4);//default memory pointer
-int addr = 0;//address pointer
+unsigned int addr = 0;//address pointer
 int fg_color = 0x4, df_color = 0x3, nm_color = 0xb, er_color = 0x40 | nm_color;
 typedef struct debug_info
 {
@@ -18,7 +18,8 @@ typedef struct debug_info
 	bool debug;
 	bool clear_out_str;
 } debug_info;
-string error_reason[12] =
+constexpr int error_count=13;
+string error_reason[error_count] =
 {
 	"no error",
 	"memory pointer out of left bound",
@@ -31,7 +32,8 @@ string error_reason[12] =
 	"negative or zero memory memsize",
 	"invalid instruction",
 	"out of program left bound while jumping",
-	"out of program right bound while jumping"
+	"out of program right bound while jumping",
+	"pointer(or return value) will be out of memory range when memory reallocates"
 };
 constexpr int basic_instr_count = 42, nested_instr_count = 6;
 string basic_instructions[basic_instr_count] =
@@ -72,10 +74,10 @@ void help(string s, bool param = false)
 	memory_operations["copy"] = "copy current cell, using next cell as offset";
 	memory_operations["move"] = "move current cell, using next cell as offset";
 	memory_operations["swap"] = "swap current cell, using next cell as offset";
-	memory_operations["alloc"] = "allocate memory, current cell as number of cells";
-	memory_operations["free"] = "deallocate memory, current cell as number of cells";
+	memory_operations["alloc"] = "allocate memory, using current cell as size and next cell as return(0:fail,1:success)";
+	memory_operations["free"] = "free memory, using current cell as size and next cell as return(0:fail,1:success)";
 	memory_operations["clear"] = "clear all memory(set them to 0)";
-	memory_operations["resize"] = "resize memory, current cell as number of cells";
+	memory_operations["resize"] = "resize memory, using current cell as size and next cell as return(0:fail,1:success)";
 	memory_operations["fill"] = "fill memory with current cell";
 	map<string, string> end;
 	end["exit"] = "exit with current cell as return value";
@@ -193,7 +195,7 @@ void clrscr()
 void error_at(string s)
 {
 	cout << "\nat:";
-	for (int n = 0; n<int(s.length()); n++)
+	for (unsigned int n = 0; n<(unsigned int)(s.length()); n++)
 	{
 		if (n != ptr)
 			color(df_color);
@@ -206,7 +208,7 @@ void error_at(string s)
 //report execution position, nearly the same as error_at
 void report_position(string s)
 {
-	for (int n = 0; n<int(s.length()); n++)
+	for (unsigned int n = 0; n<(unsigned int)(s.length()); n++)
 	{
 		if (n != ptr)
 			color(df_color);
@@ -306,6 +308,7 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 //	"not;","and;","or;","xor;","nand;","nor;","xnor;"
 	int* mptr;
 	string s;
+	int memsize_t;
 	bool minus = false;
 	if (id >= 4 && id <= 10)
 	{
@@ -423,9 +426,15 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		break;
 	case 15://alloc
 		memsize += mem[addr];
+		if (addr >= memsize - 1)
+			end(12, c, true);
 		mptr = (int*)malloc(memsize);
 		if (mptr == nullptr)//allocation failure
+		{
 			mem[addr + 1] = 0;
+			memsize -= mem[addr];
+			break;
+		}
 		else
 		{
 			memset(mptr, 0, memsize * 4);
@@ -438,13 +447,16 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		}
 		break;
 	case 16://free
-		if (memsize <= mem[addr])
+		if (memsize - mem[addr] <= 0)
 			end(8, c, true);
-		memsize += mem[addr];
+		memsize -= mem[addr];
+		if (addr >= memsize - 1)
+			end(12, c, true);
 		mptr = (int*)malloc(memsize);
 		if (mptr == nullptr)//allocation failure
 		{
 			mem[addr + 1] = 0;
+			memsize += mem[addr];
 			break;
 		}
 		else//success
@@ -462,10 +474,17 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		memset(mem, 0, memsize * 4);
 		break;
 	case 18://resize
+		if(mem[addr] <= 0)
+			end(8, c, true);
+		memsize_t = memsize;
 		memsize = mem[addr];
 		mptr = (int*)malloc(memsize);
 		if (mptr == nullptr)//allocation failure
+		{
 			mem[addr + 1] = 0;
+			memsize = memsize_t;
+			break;
+		}
 		else//success
 		{
 			memset(mptr, 0, memsize * 4);
@@ -686,7 +705,7 @@ void debug(string code, string out_str)
 	cout << mem << endl;
 	report_position(code);
 	cout << addr << endl;
-	for (int i = 0; i < 20; i++)
+	for (unsigned int i = 0; i < 20; i++)
 	{
 		if (i == addr)
 			color(fg_color);
