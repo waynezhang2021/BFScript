@@ -57,6 +57,12 @@ string nested_instructions[nested_instr_count] =
 //help function
 void help(string s, bool param = false)
 {
+	map<string, string> params;
+	params["-h(--help)"] = "get help(for a topic/item/everything)";
+	params["-f(--file)"] = "run a file";
+	params["-d(--debug)"] = "debug a file";
+	params["-s(--step)"] = "run a file instruction by instruction";
+	params["-i(--interactive)"] = "launch interactive shell";
 	map<string, string> cell_operations;
 	cell_operations["incr"] = "increment current cell";
 	cell_operations["decr"] = "decrement current cell";
@@ -110,6 +116,7 @@ void help(string s, bool param = false)
 	logic["nor"] = "NOR current cell and next cell, storing the result in the cell after next cell";
 	logic["xnor"] = "XNOR current cell and next cell, storing the result in the cell after next cell";
 	map<string, string> all;
+	all.insert(params.begin(), params.end());
 	all.insert(cell_operations.begin(), cell_operations.end());
 	all.insert(input_and_output.begin(), input_and_output.end());
 	all.insert(memory_operations.begin(), memory_operations.end());
@@ -122,6 +129,7 @@ void help(string s, bool param = false)
 	all.insert(logic.begin(), logic.end());
 
 	map<string, map<string, string>> help;
+	help["param"] = params;
 	help["cell"] = cell_operations;
 	help["io"] = input_and_output;
 	help["mem"] = memory_operations;
@@ -144,7 +152,7 @@ void help(string s, bool param = false)
 			cout << "help on topic \"" << s << "\":\n";
 			for (pair<string, string> p2 : p.second)
 			{
-				if (p2.first == "clearscreen")
+				if (p2.first == "clearscreen" || p2.first == "-i(--interactive)")
 				{
 					cout << "\t" << p2.first << "\t-" << p2.second << endl;
 					continue;
@@ -465,7 +473,7 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 			if (addr >= memsize)
 				end(2, c, true);
 			mem[addr + 1] = 1;
-			memcpy(mptr, mem, 4 * memsize);
+			memcpy(mptr, mem, 4 * static_cast<size_t>(memsize));
 			free(mem);
 			mem = mptr;
 			break;
@@ -491,7 +499,7 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 			if (addr >= memsize)
 				end(2, c, true);
 			mem[addr + 1] = 1;
-			memcpy(mptr, mem, 4 * (memsize - mem[addr]));
+			memcpy(mptr, mem, 4 * (static_cast<size_t>(memsize) - mem[addr]));
 			free(mem);
 			mem = mptr;
 		}
