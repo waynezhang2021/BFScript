@@ -5,13 +5,12 @@
 #include<time.h>
 #define defaultsize 1024
 using namespace std;
-HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
+HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);//output handle
 unsigned long long codelen;
-unsigned long long ptr = 0;
-int memsize = defaultsize;
-int* mem = (int*)malloc(memsize * 4 + 4);
-int addr = 0;
-
+unsigned long long ptr = 0;//code parsing pointer
+int memsize = defaultsize;//memsize indicator
+int* mem = (int*)malloc(memsize * 4 + 4);//default memory pointer
+int addr = 0;//address pointer
 int fg_color = 0x4, df_color = 0x3, nm_color = 0xb, er_color = 0x40 | nm_color;
 typedef struct debug_info
 {
@@ -47,12 +46,13 @@ string basic_instructions[basic_instr_count] =
 	"next;","prev;","memjump;",
 	"jump;",
 	"not;","and;","or;","xor;","nand;","nor;","xnor;"
-};
+};//basic instructions:sequencial execution
 string nested_instructions[nested_instr_count] =
 {
 	"while{","whilezero{","forever{","if{","ifzero{","}"
-};
-
+};//nestable instructions:loop and conditional
+//colors:foreground-for stress,default-runtime color,normal-console color,error-when the code crashes,also used for debug
+//help function
 void help(string s, bool param = false)
 {
 	map<string, string> cell_operations;
@@ -136,7 +136,6 @@ void help(string s, bool param = false)
 		cout << "BFScript runtime.\n";
 		s = "all";
 	}
-
 	for (pair<string, map<string, string>> p : help)
 		if (p.first == s)
 		{
@@ -166,7 +165,7 @@ void help(string s, bool param = false)
 		cout << "\t" << p.first << endl;
 	return;
 }
-
+//match substring
 bool match(string s, string subs, unsigned long long start)
 {
 	unsigned long long len = subs.length();
@@ -174,12 +173,12 @@ bool match(string s, string subs, unsigned long long start)
 		return false;
 	return (subs.compare(s.substr(start, len)) == 0);
 }
-
+//set console color
 void color(int c)
 {
 	SetConsoleTextAttribute(handle, c);
 }
-
+//clear screen
 void clrscr()
 {
 	DWORD cCharsWritten;
@@ -190,7 +189,7 @@ void clrscr()
 	FillConsoleOutputCharacter(handle, (TCHAR)' ', dwConSize, { 0,0 }, &cCharsWritten);
 	SetConsoleCursorPosition(handle, { 0, 0 });
 }
-
+//error report function
 void error_at(string s)
 {
 	cout << "\nat:";
@@ -204,7 +203,7 @@ void error_at(string s)
 	}
 	color(nm_color);
 }
-
+//report execution position, nearly the same as error_at
 void report_position(string s)
 {
 	for (int n = 0; n<int(s.length()); n++)
@@ -217,7 +216,7 @@ void report_position(string s)
 	}
 	color(nm_color);
 }
-
+//exit function
 void end(int val, string code = "", bool iserror = false)
 {
 	if (val == 0)
@@ -245,6 +244,7 @@ void end(int val, string code = "", bool iserror = false)
 		exit(val);
 	}
 }
+//find next token in code and change program counter(parsing pointer,"ptr")
 void next_token(string code, bool allow_semicolon = true)
 {
 	if (allow_semicolon)
@@ -254,7 +254,7 @@ void next_token(string code, bool allow_semicolon = true)
 		while ((code[ptr] == '\t' || code[ptr] == ' ' || code[ptr] == '\n') && ptr < codelen)
 			ptr++;
 }
-
+//as the function name
 unsigned long long next_token_of_matching_closing_bracket(unsigned long long pos, string code)
 {
 	unsigned long long temp_ptr = pos;
@@ -271,7 +271,7 @@ unsigned long long next_token_of_matching_closing_bracket(unsigned long long pos
 		temp_ptr++;
 	return temp_ptr;
 }
-
+//as the function name
 unsigned long long matching_opening_bracket(unsigned long long pos, string code)
 {
 	unsigned long long temp_ptr = pos;
@@ -291,18 +291,19 @@ unsigned long long matching_opening_bracket(unsigned long long pos, string code)
 	else
 		return temp_ptr;
 }
+//parameters are:instruction id,your code(used for debug),output string reference(used for debug),output string boolean option
 void execute_basic_instruction(int id, string c, string& out_string, bool output_string = false)
 {
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+//	"incr;","decr;","zero;","set",
+//	"getchar;","putchar;","getint;","putint;","newline;","bell;","clearscreen",
+//	"copy;","move;","swap;","alloc;","free;","clear;","resize;","fill;",
+//	"exit;","crash;","break;",
+//	"div;","mod;","add;","sub;","mul;",
+//	"compare;",
+//	"sleep;","time;","clock;",
+//	"next;","prev;","memjump;",
+//	"jump;",
+//	"not;","and;","or;","xor;","nand;","nor;","xnor;"
 	int* mptr;
 	string s;
 	bool minus = false;
@@ -313,16 +314,16 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 	}
 	switch (id)
 	{
-	case 1:
+	case 1://incr
 		mem[addr]++;
 		break;
-	case 2:
+	case 2://decr
 		mem[addr]--;
 		break;
-	case 3:
+	case 3://zero
 		mem[addr] = 0;
 		break;
-	case 4:
+	case 4://set
 		ptr += 3;
 		if (c[ptr] != ' ')
 			end(9, c, true);
@@ -346,19 +347,19 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 			mem[addr] = atoi(s.c_str());
 		break;
 
-	case 5:
+	case 5://getchar
 		mem[addr] = int(getchar());
 		break;
-	case 6:
+	case 6://putchar
 		if (output_string)
 			out_string += char(mem[addr]);
 		else
 			putchar(mem[addr]);
 		break;
-	case 7:
+	case 7://getint
 		cin >> mem[addr];
 		break;
-	case 8:
+	case 8://putint
 		if (output_string)
 		{
 			char buf[64];
@@ -368,34 +369,34 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		else
 			cout << mem[addr];
 		break;
-	case 9:
+	case 9://newline
 		if (output_string)
 			out_string += "\n";
 		else
 			putchar('\n');
 		break;
-	case 10:
+	case 10://bell
 		putchar(7);
 		break;
-	case 11:
+	case 11://clearscreen
 		if (output_string)
 			out_string = "";
 		else
 			clrscr();
 		break;
 
-	case 12:
+	case 12://copy
 		if (addr + mem[addr + 1] < memsize)
 		{
 			if (addr + mem[addr + 1] >= 0)
 				mem[addr + mem[addr + 1]] = mem[addr];
 			else
-				end(1, c, true);
+				end(1, c, true);//out of left bound
 		}
 		else
-			end(2, c, true);
+			end(2, c, true);//out of right bound
 		break;
-	case 13:
+	case 13://move
 		if (addr + mem[addr + 1] < memsize)
 		{
 			if (addr + mem[addr + 1] >= 0)
@@ -404,26 +405,26 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 				mem[addr + mem[addr + 1]] = mem[addr];
 			}
 			else
-				end(1, c, true);
+				end(1, c, true);//out of left bound
 		}
 		else
-			end(2, c, true);
+			end(2, c, true);//out of right bound
 		break;
-	case 14:
+	case 14://swap
 		if (addr + mem[addr + 1] < memsize)
 		{
 			if (addr + mem[addr + 1] >= 0)
 				swap(mem[addr + mem[addr + 1]], mem[addr]);
 			else
-				end(1, c, true);
+				end(1, c, true);//out of left bound
 		}
 		else
-			end(2, c, true);
+			end(2, c, true);//out of right bound
 		break;
-	case 15:
+	case 15://alloc
 		memsize += mem[addr];
 		mptr = (int*)malloc(memsize);
-		if (mptr == nullptr)
+		if (mptr == nullptr)//allocation failure
 			mem[addr + 1] = 0;
 		else
 		{
@@ -436,17 +437,17 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 			mem = mptr;
 		}
 		break;
-	case 16:
+	case 16://free
 		if (memsize <= mem[addr])
 			end(8, c, true);
 		memsize += mem[addr];
 		mptr = (int*)malloc(memsize);
-		if (mptr == nullptr)
+		if (mptr == nullptr)//allocation failure
 		{
 			mem[addr + 1] = 0;
 			break;
 		}
-		else
+		else//success
 		{
 			memset(mptr, 0, memsize * 4);
 			if (addr >= memsize)
@@ -457,15 +458,15 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 			mem = mptr;
 			break;
 		}
-	case 17:
+	case 17://clear
 		memset(mem, 0, memsize * 4);
 		break;
-	case 18:
+	case 18://resize
 		memsize = mem[addr];
 		mptr = (int*)malloc(memsize);
-		if (mptr == nullptr)
+		if (mptr == nullptr)//allocation failure
 			mem[addr + 1] = 0;
-		else
+		else//success
 		{
 			memset(mptr, 0, memsize * 4);
 			if (addr >= memsize)
@@ -476,21 +477,21 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 			mem = mptr;
 		}
 		break;
-	case 19:
+	case 19://fill
 		fill(mem, mem + memsize * 4, mem[addr]);
 		break;
 
-	case 20:
+	case 20://exit
 		end(mem[addr], c, false);
 		break;
-	case 21:
+	case 21://crash
 		end(7, c, true);
 		break;
-	case 22:
+	case 22://break
 		while (c[ptr] != '}')
 			ptr++;
 		break;
-	case 23:
+	case 23://div
 		if (addr > memsize - 3)
 			end(2, c, true);
 		if (mem[addr + 1] == 0)
@@ -498,7 +499,7 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		else
 			mem[addr + 2] = mem[addr] / mem[addr + 1];
 		break;
-	case 24:
+	case 24://mod
 		if (addr > memsize - 3)
 			end(2, c, true);
 		if (mem[addr + 1] == 0)
@@ -506,25 +507,25 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		else
 			mem[addr + 2] = mem[addr] % mem[addr + 1];
 		break;
-	case 25:
+	case 25://add
 		if (addr > memsize - 3)
 			end(2, c, true);
 		else
 			mem[addr + 2] = mem[addr] + mem[addr + 1];
 		break;
-	case 26:
+	case 26://sub
 		if (addr > memsize - 3)
 			end(2, c, true);
 		else
 			mem[addr + 2] = mem[addr] - mem[addr + 1];
 		break;
-	case 27:
+	case 27://mul
 		if (addr > memsize - 3)
 			end(2, c, true);
 		else
 			mem[addr + 2] = mem[addr] * mem[addr + 1];
 		break;
-	case 28:
+	case 28://compare
 		if (addr > memsize - 3)
 			end(2, c, true);
 		else
@@ -541,30 +542,28 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		}
 		break;
 
-	case 29:
-		Sleep(mem[addr]);
+	case 29://sleep
+		Sleep(mem[addr]);//note:*NIX users may need to change code here to compat with system
 		break;
-	case 30:
+	case 30://time
 		mem[addr] = time(0);
 		break;
-	case 31:
-		
+	case 31://clock
 		mem[addr] = clock();
 		break;
-
-	case 32:
+	case 32://next
 		if (addr != memsize - 1)
 			addr++;
 		else
 			end(2, c, true);
 		break;
-	case 33:
+	case 33://prev
 		if (addr != 0)
 			addr--;
 		else
 			end(1, c, true);
 		break;
-	case 34:
+	case 34://memjump
 		if (addr + mem[addr + 1] < 0)
 			end(1, c, true);
 		if (addr + mem[addr + 1] >= memsize)
@@ -572,7 +571,7 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		addr += mem[addr + 1];
 		break;
 
-	case 35:
+	case 35://jump
 		if (ptr + mem[addr] < 0)
 			end(10, c, true);
 		if (ptr + mem[addr] > codelen - 1)
@@ -580,51 +579,51 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		ptr += mem[addr];
 		break;
 
-	case 36:
+	case 36://not
 		if (ptr > memsize - 2)
 			end(2, c, true);
 		mem[addr + 1] = ~mem[addr];
 		break;
-	case 37:
+	case 37://and
 		if (ptr > memsize - 3)
 			end(2, c, true);
 		mem[addr + 2] = mem[addr] & mem[addr + 1];
 		break;
-	case 38:
+	case 38://or
 		if (ptr > memsize - 3)
 			end(2, c, true);
 		mem[addr + 2] = mem[addr] | mem[addr + 1];
 		break;
-	case 39:
+	case 39://xor
 		if (ptr > memsize - 3)
 			end(2, c, true);
 		mem[addr + 2] = mem[addr] ^ mem[addr + 1];
 		break;
-	case 40:
+	case 40://nand
 		if (ptr > memsize - 3)
 			end(2, c, true);
 		mem[addr + 2] = ~(mem[addr] & mem[addr + 1]);
 		break;
-	case 41:
+	case 41://nor
 		if (ptr > memsize - 3)
 			end(2, c, true);
 		mem[addr + 2] = ~(mem[addr] | mem[addr + 1]);
 		break;
-	case 42:
+	case 42://xnor
 		if (ptr > memsize - 3)
 			end(2, c, true);
 		mem[addr + 2] = ~(mem[addr] ^ mem[addr + 1]);
 		break;
 	}
 }
-
+//execute nested instruction:loop,conditional,closing "}"
 void execute_nested_instruction(int id, string c)
 {
 	static bool skip_mark;
-	unsigned long long temp_ptr, temp_ptr_2;
+	unsigned long long temp_ptr, temp_ptr_2;//temp_ptr for temporarily saving match position, temp_ptr_2 for end of code detection
 	switch (id)
 	{
-	case 1:
+	case 1://while
 		if (mem[addr] == 0)
 		{
 			skip_mark = true;
@@ -633,7 +632,7 @@ void execute_nested_instruction(int id, string c)
 		else
 			ptr += nested_instructions[0].length();
 		break;
-	case 2:
+	case 2://whilezero
 		if (mem[addr] != 0)
 		{
 			skip_mark = true;
@@ -642,27 +641,27 @@ void execute_nested_instruction(int id, string c)
 		else
 			ptr += nested_instructions[1].length();
 		break;
-	case 3:
+	case 3://forever
 		ptr += nested_instructions[2].length();
 		break;
 
-	case 4:
+	case 4://if
 		if (mem[addr] == 0)
 			ptr = next_token_of_matching_closing_bracket(ptr, c);
 		else
 			ptr += nested_instructions[3].length();
 		break;
-	case 5:
+	case 5://ifzero
 		if (mem[addr] != 0)
 			ptr = next_token_of_matching_closing_bracket(ptr, c);
 		else
 			ptr += nested_instructions[4].length();
 		break;
 
-	case 6:
+	case 6://closing bracket
 		temp_ptr = matching_opening_bracket(ptr, c);
-		
-		
+		//marked when loop should stop
+		//since the mark don't have a way to be true when it is not a loop, no conditional here
 		if (skip_mark)
 		{
 			skip_mark = false;
@@ -680,7 +679,7 @@ void execute_nested_instruction(int id, string c)
 		break;
 	}
 }
-
+//debug output function
 void debug(string code, string out_str)
 {
 	clrscr();
@@ -698,7 +697,7 @@ void debug(string code, string out_str)
 	cout << endl;
 	cout << out_str;
 }
-
+//execute code with debug information
 void exec(string code, debug_info debug_info = { false,false })
 {
 	static string out_str = "";
@@ -748,6 +747,7 @@ void exec(string code, debug_info debug_info = { false,false })
 			end(9, code, true);
 	}
 }
+//initialize memory(set them all to zero)
 inline void init_mem()
 {
 	memset(mem, 0, memsize * 4);
