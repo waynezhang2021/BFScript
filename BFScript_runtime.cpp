@@ -11,14 +11,14 @@ unsigned long long ptr = 0;//code parsing pointer
 unsigned int memsize = defaultsize;//memsize indicator
 int* mem = (int*)malloc(memsize * 4 + 4);//default memory pointer
 unsigned int addr = 0;//address pointer
-int fg_color = 0x4, df_color = 0x3, nm_color = 0xb, er_color = 0x40 | nm_color;
+short fg_color = 0x4, df_color = 0x3, nm_color = 0xb, er_color = 0x40 | nm_color;
 typedef struct debug_info
 {
 	bool step;
 	bool debug;
 	bool clear_out_str;
 } debug_info;
-constexpr int error_count=13;
+constexpr int error_count = 13;
 string error_reason[error_count] =
 {
 	"no error",
@@ -176,7 +176,7 @@ bool match(string s, string subs, unsigned long long start)
 	return (subs.compare(s.substr(start, len)) == 0);
 }
 //set console color
-void color(int c)
+void color(short c)
 {
 	SetConsoleTextAttribute(handle, c);
 }
@@ -195,7 +195,7 @@ void clrscr()
 void error_at(string s)
 {
 	cout << "\nat:";
-	for (unsigned int n = 0; n<(unsigned int)(s.length()); n++)
+	for (unsigned int n = 0; n < (unsigned int)(s.length()); n++)
 	{
 		if (n != ptr)
 			color(df_color);
@@ -208,7 +208,7 @@ void error_at(string s)
 //report execution position, nearly the same as error_at
 void report_position(string s)
 {
-	for (unsigned int n = 0; n<(unsigned int)(s.length()); n++)
+	for (unsigned int n = 0; n < (unsigned int)(s.length()); n++)
 	{
 		if (n != ptr)
 			color(df_color);
@@ -296,16 +296,16 @@ unsigned long long matching_opening_bracket(unsigned long long pos, string code)
 //parameters are:instruction id,your code(used for debug),output string reference(used for debug),output string boolean option
 void execute_basic_instruction(int id, string c, string& out_string, bool output_string = false)
 {
-//	"incr;","decr;","zero;","set",
-//	"getchar;","putchar;","getint;","putint;","newline;","bell;","clearscreen",
-//	"copy;","move;","swap;","alloc;","free;","clear;","resize;","fill;",
-//	"exit;","crash;","break;",
-//	"div;","mod;","add;","sub;","mul;",
-//	"compare;",
-//	"sleep;","time;","clock;",
-//	"next;","prev;","memjump;",
-//	"jump;",
-//	"not;","and;","or;","xor;","nand;","nor;","xnor;"
+	//	"incr;","decr;","zero;","set",
+	//	"getchar;","putchar;","getint;","putint;","newline;","bell;","clearscreen",
+	//	"copy;","move;","swap;","alloc;","free;","clear;","resize;","fill;",
+	//	"exit;","crash;","break;",
+	//	"div;","mod;","add;","sub;","mul;",
+	//	"compare;",
+	//	"sleep;","time;","clock;",
+	//	"next;","prev;","memjump;",
+	//	"jump;",
+	//	"not;","and;","or;","xor;","nand;","nor;","xnor;"
 	int* mptr;
 	string s;
 	int memsize_t;
@@ -366,7 +366,7 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		if (output_string)
 		{
 			char buf[64];
-			itoa(mem[addr], buf, 10);
+			_itoa(mem[addr], buf, 10);
 			out_string += buf;
 		}
 		else
@@ -474,7 +474,7 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		memset(mem, 0, memsize * 4);
 		break;
 	case 18://resize
-		if(mem[addr] <= 0)
+		if (mem[addr] <= 0)
 			end(8, c, true);
 		memsize_t = memsize;
 		memsize = mem[addr];
@@ -565,7 +565,7 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		Sleep(mem[addr]);//note:*NIX users may need to change code here to compat with system
 		break;
 	case 30://time
-		mem[addr] = time(0);
+		mem[addr] = int(time(0));
 		break;
 	case 31://clock
 		mem[addr] = clock();
