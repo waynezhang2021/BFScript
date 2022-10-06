@@ -710,10 +710,12 @@ void execute_nested_instruction(int id, string c)
 void debug(string code, string out_str)
 {
 	clrscr();
+	color(nm_color);
+	cout << "memory address:";
 	cout << mem << endl;
 	report_position(code);
 	cout << addr << endl;
-	for (unsigned int i = 0; i < 20; i++)
+	for (unsigned int i = 0; i < min(20u,memsize); i++)
 	{
 		if (i == addr)
 			color(fg_color);
@@ -721,7 +723,9 @@ void debug(string code, string out_str)
 			color(nm_color);
 		cout << mem[i] << "\t";
 	}
+	color(nm_color);
 	cout << endl;
+	cout << "output:\n";
 	cout << out_str;
 }
 //execute code with debug information
@@ -741,15 +745,15 @@ void exec(string code, debug_info debug_info = { false,false })
 			if (debug_info.step)
 				getchar();
 			else
-				Sleep(500);
+				Sleep(100);
 		}
 		matched = false;
 		for (int i = 0; i < basic_instr_count; i++)
 			if (match(code, basic_instructions[i], ptr))
 			{
 				matched = true;
-				execute_basic_instruction(i + 1, code, out_str, true);
-				if (i != 39)
+				execute_basic_instruction(i + 1, code, out_str, debug_info.debug);
+				if (i != 3)
 					ptr += basic_instructions[i].length();
 				next_token(code);
 				break;
@@ -760,7 +764,7 @@ void exec(string code, debug_info debug_info = { false,false })
 			if (debug_info.step)
 				getchar();
 			else
-				Sleep(500);
+				Sleep(100);
 		}
 		for (int i = 0; i < nested_instr_count; i++)
 			if (match(code, nested_instructions[i], ptr))
