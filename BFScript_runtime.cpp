@@ -35,7 +35,7 @@ string error_reason[error_count] =
 	"out of program right bound while jumping",
 	"pointer(or return value) will be out of memory range when memory reallocates"
 };
-constexpr int basic_instr_count = 42, nested_instr_count = 6;
+constexpr int basic_instr_count = 44, nested_instr_count = 6;
 string basic_instructions[basic_instr_count] =
 {
 	"incr;","decr;","zero;","set",
@@ -47,7 +47,8 @@ string basic_instructions[basic_instr_count] =
 	"sleep;","time;","clock;",
 	"next;","prev;","memjump;",
 	"jump;",
-	"not;","and;","or;","xor;","nand;","nor;","xnor;"
+	"not;","and;","or;","xor;","nand;","nor;","xnor;",
+	"random;","seed;"
 };//basic instructions:sequencial execution
 string nested_instructions[nested_instr_count] =
 {
@@ -115,6 +116,9 @@ void help(string s, bool param = false)
 	logic["nand"] = "NAND current cell and next cell, storing the result in the cell after next cell";
 	logic["nor"] = "NOR current cell and next cell, storing the result in the cell after next cell";
 	logic["xnor"] = "XNOR current cell and next cell, storing the result in the cell after next cell";
+	map<string, string> random;
+	random["random"] = "generate a pseudo-random number and store it in current cell";
+	random["seed"] = "set pseudo-random seed";
 	map<string, string> all;
 	all.insert(params.begin(), params.end());
 	all.insert(cell_operations.begin(), cell_operations.end());
@@ -127,6 +131,7 @@ void help(string s, bool param = false)
 	all.insert(pointer_moving.begin(), pointer_moving.end());
 	all.insert(jump.begin(), jump.end());
 	all.insert(logic.begin(), logic.end());
+	all.insert(random.begin(), random.end());
 
 	map<string, map<string, string>> help;
 	help["param"] = params;
@@ -140,6 +145,7 @@ void help(string s, bool param = false)
 	help["pointer"] = pointer_moving;
 	help["jump"] = jump;
 	help["logic"] = logic;
+	help["random"] = random;
 	help["all"] = all;
 	if (param)
 	{
@@ -313,7 +319,8 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 	//	"sleep;","time;","clock;",
 	//	"next;","prev;","memjump;",
 	//	"jump;",
-	//	"not;","and;","or;","xor;","nand;","nor;","xnor;"
+	//	"not;","and;","or;","xor;","nand;","nor;","xnor;",
+	//	"random;","seed;"
 	int* mptr;
 	string s;
 	int memsize_t;
@@ -640,6 +647,12 @@ void execute_basic_instruction(int id, string c, string& out_string, bool output
 		if (ptr > memsize - 3)
 			end(2, c, true);
 		mem[addr + 2] = ~(mem[addr] ^ mem[addr + 1]);
+		break;
+	case 43://random
+		mem[addr] = (rand()<<17) | (rand()<<2) | (rand()&0x3);//shift 15-bit random number and concat them
+		break;
+	case 44://seed
+		srand(mem[addr]);
 		break;
 	}
 }
