@@ -29,7 +29,7 @@ string error_reason[error_count] =
 	"division by 0",
 	"modulo by 0",
 	"crash called",
-	"negative or zero memory memsize",
+	"negative or zero memory size",
 	"invalid instruction",
 	"out of program left bound while jumping",
 	"out of program right bound while jumping",
@@ -39,7 +39,7 @@ constexpr int basic_instr_count = 44, nested_instr_count = 6;
 string basic_instructions[basic_instr_count] =
 {
 	"incr;","decr;","zero;","set",
-	"getchar;","putchar;","getint;","putint;","newline;","bell;","clearscreen",
+	"getchar;","putchar;","getint;","putint;","newline;","bell;","clearscreen;",
 	"copy;","move;","swap;","alloc;","free;","clear;","resize;","fill;",
 	"exit;","crash;","break;",
 	"div;","mod;","add;","sub;","mul;",
